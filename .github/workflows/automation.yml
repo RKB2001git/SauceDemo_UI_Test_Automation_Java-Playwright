@@ -16,9 +16,18 @@ on:
           - smoke
           - regression
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
 
@@ -51,3 +60,25 @@ jobs:
         with:
           name: test-reports
           path: target/surefire-reports
+
+      - name: Generate Allure Report
+        if: always()
+        run: |
+          curl -o allure.tgz -OLs https://github.com/allure-framework/allure2/releases/download/2.35.1/allure-2.35.1.tgz
+          tar -zxvf allure.tgz
+          ./allure-2.35.1/bin/allure generate target/allure-results --clean -o target/allure-report
+
+      - name: Setup GitHub Pages
+        if: always()
+        uses: actions/configure-pages@v5
+
+      - name: Upload Allure Report
+        if: always()
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: target/allure-report
+
+      - name: Deploy Allure Report
+        if: always()
+        id: deployment
+        uses: actions/deploy-pages@v4
