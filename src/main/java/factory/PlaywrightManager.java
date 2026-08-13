@@ -1,6 +1,9 @@
 package factory;
 
 import com.microsoft.playwright.*;
+import config.ConfigReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PlaywrightManager {
 
@@ -15,16 +18,42 @@ public class PlaywrightManager {
 
     private static final ThreadLocal<Page> pageThreadLocal =
             new ThreadLocal<>();
+    private static final Logger log = LoggerFactory.getLogger(PlaywrightManager.class);
 
     public static void init() {
 
         Playwright playwright = Playwright.create();
         playwrightThreadLocal.set(playwright);
 
-        Browser browser = playwright.chromium().launch(
-                new BrowserType.LaunchOptions()
-                        .setHeadless(false)
+        boolean headless = Boolean.parseBoolean(
+                ConfigReader.getProperty("headless")
         );
+        log.info("Headless mode: {}", headless);
+
+        String browserName = ConfigReader.getProperty("browser").toLowerCase();
+        log.info("Browser: {}", browserName);
+
+        Browser browser;
+        BrowserType.LaunchOptions launchOptions =
+                new BrowserType.LaunchOptions().setHeadless(headless);
+
+        switch (browserName) {
+            case "firefox":
+                browser = playwright.firefox().launch(launchOptions);
+                break;
+            case "webkit":
+                browser = playwright.webkit().launch(launchOptions);
+                break;
+            case "chromium":
+                browser = playwright.chromium().launch(launchOptions);
+                break;
+            default:
+                throw new IllegalArgumentException(
+                        "Unsupported browser: " + browserName
+                                + ". Use 'chromium', 'firefox', or 'webkit'."
+                );
+        }
+
         browserThreadLocal.set(browser);
 
         BrowserContext context = browser.newContext();
@@ -33,7 +62,6 @@ public class PlaywrightManager {
         Page page = context.newPage();
         pageThreadLocal.set(page);
     }
-
 
     public static Playwright getPlaywright() {
 
