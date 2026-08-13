@@ -38,10 +38,16 @@ jobs:
       - name: Run Tests
         run: mvn clean test -DtestSuite=${{ inputs.testSuite || 'smoke' }} -Dheadless=true
 
-      - name: Upload Test Results
+      - name: Upload Allure Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
-          path: |
-            target/
+          name: allure-results
+          path: target/allure-results
+
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: target/surefire-reports
