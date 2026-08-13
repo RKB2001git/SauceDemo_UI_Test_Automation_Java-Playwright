@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -36,7 +36,7 @@ jobs:
         run: mvn exec:java -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="install --with-deps"
 
       - name: Run Tests
-        run: mvn clean test -DtestSuite=${{ inputs.testSuite || 'smoke' }}
+        run: mvn clean test -DtestSuite=${{ inputs.testSuite || 'smoke' }} -Dheadless=true
 
       - name: Upload Test Results
         if: always()
