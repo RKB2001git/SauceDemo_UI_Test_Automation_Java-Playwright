@@ -13,7 +13,7 @@ public class CartPage extends BasePage{
 
     public CartPage(Page page){
         super(page);
-        cart = page.locator("//div[@data-test='shopping-cart-link']");
+        cart = page.locator("//a[@data-test='shopping-cart-link']");
         checkoutButton = page.locator("#checkout");
     }
     public void userOpenCart(){
