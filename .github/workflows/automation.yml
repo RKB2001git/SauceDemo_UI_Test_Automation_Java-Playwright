@@ -25,9 +25,9 @@ permissions:
 jobs:
 
   # ============================================================
-  # TEST JOB
+  # TEST + ALLURE REPORT
   # ============================================================
-  test:
+  build:
 
     runs-on: ubuntu-latest
 
@@ -52,10 +52,28 @@ jobs:
       - name: Run Tests
         run: |
           mvn clean test \
-            -DtestSuite=${{ inputs.testSuite || 'smoke' }} \
+            -DtestSuite=${{ inputs.testSuite || 'regression' }} \
             -Dheadless=true
 
-      # These steps execute even when tests fail
+      # --------------------------------------------------------
+      # Generate Allure even if tests fail
+      # --------------------------------------------------------
+      - name: Generate Allure Report
+        if: always()
+        run: |
+          curl -o allure.tgz -OLs \
+            https://github.com/allure-framework/allure2/releases/download/2.35.1/allure-2.35.1.tgz
+
+          tar -zxvf allure.tgz
+
+          ./allure-2.35.1/bin/allure generate \
+            target/allure-results \
+            --clean \
+            -o target/allure-report
+
+      # --------------------------------------------------------
+      # Upload raw Allure results for debugging/download
+      # --------------------------------------------------------
       - name: Upload Allure Results
         if: always()
         uses: actions/upload-artifact@v4
@@ -63,6 +81,9 @@ jobs:
           name: allure-results
           path: target/allure-results
 
+      # --------------------------------------------------------
+      # Upload Surefire reports
+      # --------------------------------------------------------
       - name: Upload Test Reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -70,55 +91,44 @@ jobs:
           name: test-reports
           path: target/surefire-reports
 
+      # --------------------------------------------------------
+      # Configure GitHub Pages
+      # --------------------------------------------------------
+      - name: Setup GitHub Pages
+        if: always()
+        uses: actions/configure-pages@v5
+
+      # --------------------------------------------------------
+      # THIS IS THE ARTIFACT THAT WILL BE DEPLOYED
+      # --------------------------------------------------------
+      - name: Upload Allure Report to Pages
+        if: always()
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: target/allure-report
+
 
   # ============================================================
-  # ALLURE REPORT + GITHUB PAGES
+  # DEPLOY
   # ============================================================
   deploy:
 
     runs-on: ubuntu-latest
 
-    needs: test
+    needs: build
 
-    # Run this job even if the test job failed
     if: always()
 
     permissions:
-      contents: read
       pages: write
       id-token: write
+      contents: read
 
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Download Allure Results
-        uses: actions/download-artifact@v4
-        with:
-          name: allure-results
-          path: target/allure-results
-
-      - name: Generate Allure Report
-        run: |
-          curl -o allure.tgz -OLs https://github.com/allure-framework/allure2/releases/download/2.35.1/allure-2.35.1.tgz
-          tar -zxvf allure.tgz
-          ./allure-2.35.1/bin/allure generate \
-            target/allure-results \
-            --clean \
-            -o target/allure-report
-
-      - name: Setup GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Allure Report
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: target/allure-report
 
       - name: Deploy Allure Report
         id: deployment
